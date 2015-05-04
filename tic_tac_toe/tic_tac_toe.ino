@@ -1,10 +1,11 @@
-int buttons[] = {45, 46, 47, 48, 49, 50, 51, 52, 53};
+int buttons[] = {43, 49, 26, 44, 45, 38, 42, 50, 28};
 int indicatorLed1 = 40;
 int indicatorLed2 = 41;
 boolean turn = true;
+int row = 0;
 int board[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
-int redLeds [] = {2, 3, 4, 5, 6, 7, 8, 9, 10};
-int blueLeds [] = {11, 12, 13, 14, 15, 16, 17, 18, 19};
+int redLeds [] = {3, 6, 10, 4, 5, 9, 2, 7, 8};
+int blueLeds [] = {12, 15, 19, 13, 14, 18, 11, 16, 17};
 void setup(){
   Serial.begin(9600);
   for(int i = 0; i < 9; i++){
@@ -40,7 +41,7 @@ int readButtons(){
       return 8;
     }
   }
-  return 0;
+  return -1;
 }
 
 void changePlayer(){
@@ -52,6 +53,7 @@ void changePlayer(){
     digitalWrite(indicatorLed1, HIGH);
   }
   turn = !turn;
+  row++;
 }
   
 
@@ -91,11 +93,16 @@ int checkForWinner(){
 }
 
 void winning(int winner){
-  if(winner == 1){
+  if(turn){
+    digitalWrite(indicatorLed1, LOW);
+  } else{
+    digitalWrite(indicatorLed2, LOW);
+  }
+  if(winner != 1){
     for(int i = 0; i < 9; i++){
       digitalWrite(redLeds[i], LOW);
     }
-    for(int i = 0; i < 3; i++){
+    for(int i = 0; i < 5; i++){
       for(int j = 0; j < 9; j++){
         digitalWrite(blueLeds[j], HIGH);
       }
@@ -109,7 +116,7 @@ void winning(int winner){
     for(int i = 0; i < 9; i++){
       digitalWrite(blueLeds[i], LOW);
     }
-    for(int i = 0; i < 3; i++){
+    for(int i = 0; i < 5; i++){
       for(int j = 0; j < 9; j++){
         digitalWrite(redLeds[j], HIGH);
       }
@@ -120,11 +127,47 @@ void winning(int winner){
       delay(500);
     }
   }
+  
+}
+
+void drow_blink(){
+  if(turn){
+    digitalWrite(indicatorLed1, LOW);
+  } else{
+    digitalWrite(indicatorLed2, LOW);
+  }
+  for(int i = 0; i<9; i++){
+  if(board[i] == 1){
+    digitalWrite(redLeds[i], LOW);
+  }else if(board[i] == 2)
+    digitalWrite(blueLeds[i], LOW);
+  }
+  for(int j = 0; j < 5; j++){
+    for(int i = 0; i<9; i++){
+      if(board[i] == 1){
+        digitalWrite(redLeds[i], HIGH);
+      }else if(board[i] == 2)
+        digitalWrite(blueLeds[i], HIGH);
+    }
+    delay(500);
+    for(int i = 0; i<9; i++){
+      if(board[i] == 1){
+        digitalWrite(redLeds[i], LOW);
+      }else if(board[i] == 2)
+        digitalWrite(blueLeds[i], LOW);
+    }
+    delay(500);
+    
+  }
 }
 
 void loop(){
+  Serial.println(readButtons());
   play(readButtons());
   int winner = checkForWinner();
+  if(row == 10 && winner == 0){
+    drow_blink();
+  }
   if(winner != 0){
     winning(winner);
   }
