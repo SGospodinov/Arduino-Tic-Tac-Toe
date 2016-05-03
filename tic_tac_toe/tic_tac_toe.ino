@@ -1,6 +1,6 @@
 int indicatorLedBlue = 22;
 int indicatorLedRed = 23;
-boolean turn = !true;
+boolean turn = true;
 int row = 0;
 int board[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 int redLeds [] = {11, 12, 13, 14, 15, 16, 17, 18, 19};
@@ -220,21 +220,41 @@ void drow_blink(){
   }
 }
 
+void undo(){
+  Serial.println("UNDO");
+}
+
+void restartGame(){
+  turn = true;
+  row = 0;
+  for(int i = 0; i < 9; i++){
+    digitalWrite(redLeds[i], LOW);
+    digitalWrite(blueLeds[i], LOW);
+    board[i] = 0;
+  }
+  Serial.println("RESTARTED");
+}
+
 void decodeButtonVlues(int value){
-  Serial.println(value/10);
-  if(value/10 == 1){
-    play(value%10);
+  int event = value/10;
+  int button = value%10;
+  if(event == 1){
+    play(button);
+  }else if(event == 2){
+    undo();
+  }else if(event == 3){
+    restartGame();
   }
 }
 
 void loop(){
   decodeButtonVlues(readButtons());
-//  play(readButtons());
   int winner = checkForWinner();
   if(row == 10 && winner == 0){
     drow_blink();
   }
   if(winner != 0){
     winning(winner);
+    restartGame();
   }
 }
