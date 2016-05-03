@@ -3,6 +3,7 @@ int indicatorLedRed = 23;
 boolean turn = true;
 int row = 0;
 int board[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+int oldBoard[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 int redLeds [] = {11, 12, 13, 14, 15, 16, 17, 18, 19};
 int blueLeds [] = {2, 3, 4, 5, 6, 7, 8, 9, 10};
 int buttonPins[] = {53, 52, 51, 50, 49, 48, 47, 46, 45};
@@ -120,6 +121,9 @@ void play(int value){
   if(board[value]!=0){
     return;
   }
+  for(int i = 0; i < 9; i++){
+    oldBoard[i] = board[i];
+  }
   if(turn){
     digitalWrite(redLeds[value],HIGH);
     board[value] = 1;
@@ -221,6 +225,24 @@ void drow_blink(){
 }
 
 void undo(){
+  for(int i = 0; i < 9; i++){
+    board[i] = oldBoard[i];
+  }
+  if(turn){
+    digitalWrite(indicatorLedBlue, LOW);
+    digitalWrite(indicatorLedRed, HIGH);
+  } else{
+    digitalWrite(indicatorLedRed, LOW);
+    digitalWrite(indicatorLedBlue, HIGH);
+  }
+  turn = !turn;
+  row--;
+  for(int i = 0; i<9; i++){
+    if(board[i] == 0){
+      digitalWrite(redLeds[i], LOW);
+      digitalWrite(blueLeds[i], LOW);
+    }
+  }
   Serial.println("UNDO");
 }
 
@@ -231,6 +253,7 @@ void restartGame(){
     digitalWrite(redLeds[i], LOW);
     digitalWrite(blueLeds[i], LOW);
     board[i] = 0;
+    oldBoard[i]=0;
   }
   Serial.println("RESTARTED");
 }
@@ -252,6 +275,7 @@ void loop(){
   int winner = checkForWinner();
   if(row == 10 && winner == 0){
     drow_blink();
+    restartGame();
   }
   if(winner != 0){
     winning(winner);
