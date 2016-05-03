@@ -1,56 +1,115 @@
-int buttons[] = {43, 49, 26, 44, 45, 38, 42, 50, 28};
-int indicatorLed1 = 40;
-int indicatorLed2 = 41;
-boolean turn = true;
+int indicatorLedBlue = 22;
+int indicatorLedRed = 23;
+boolean turn = !true;
 int row = 0;
 int board[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
-int redLeds [] = {3, 6, 10, 4, 5, 9, 2, 7, 8};
-int blueLeds [] = {12, 15, 19, 13, 14, 18, 11, 16, 17};
+int redLeds [] = {11, 12, 13, 14, 15, 16, 17, 18, 19};
+int blueLeds [] = {2, 3, 4, 5, 6, 7, 8, 9, 10};
+int buttonPins[] = {53, 52, 51, 50, 49, 48, 47, 46, 45};
+
 void setup(){
   Serial.begin(9600);
   for(int i = 0; i < 9; i++){
-    pinMode(buttons[i], INPUT);
+    pinMode(buttonPins[i], INPUT);
+    digitalWrite(buttonPins[i], HIGH);
     pinMode(redLeds[i], OUTPUT);
     pinMode(blueLeds[i], OUTPUT);
     digitalWrite(redLeds[i], LOW);
     digitalWrite(blueLeds[i], LOW);
   }
-  pinMode(indicatorLed1, OUTPUT);
-  pinMode(indicatorLed2, OUTPUT);
+  pinMode(indicatorLedBlue, OUTPUT);
+  pinMode(indicatorLedRed, OUTPUT);
   changePlayer();
 }
+
+int DCgap = 150;            // max ms between clicks for a double click event
+int holdTime = 2000;        // ms hold period: how long to wait for press+hold event
+
+// Button variables
+boolean buttonVals[] = {LOW, LOW, LOW, LOW, LOW, LOW, LOW, LOW};   // value read from button
+boolean buttonLasts[] = {LOW, LOW, LOW, LOW, LOW, LOW, LOW, LOW};  // buffered value of the button's previous state
+boolean DCwaitings[] = {false, false, false, false, false, false, false, false, false};  // whether we're waiting for a double click (down)
+boolean DConUps[] = {false, false, false, false, false, false, false, false, false};     // whether to register a double click on next release, or whether to wait and click
+boolean singleOKs[] = {true, true, true, true, true, true, true, true, true};    // whether it's OK to do a single click
+long downTimes[] = {-1, -1, -1, -1, -1, -1, -1, -1, -1};         // time the button was pressed down
+long upTimes[] = {-1, -1, -1, -1, -1, -1, -1, -1, -1}; // time the button was released
+boolean ignoreUps[] = {false, false, false, false, false, false, false, false, false};   // whether to ignore the button release because the click+hold was triggered
+boolean waitForUps[] = {false, false, false, false, false, false, false, false, false};        // when held, whether to wait for the up event
+boolean holdEventPasts[] = {false, false, false, false, false, false, false, false, false};    // whether or not the hold event happened already
+
+
+int checkButton(int button) { 
+   int event = 0;
+   buttonVals[button] = digitalRead(buttonPins[button]);
+   // Button pressed down
+   if (buttonVals[button] == HIGH && buttonLasts[button] == LOW)
+   {
+       downTimes[button] = millis();
+       ignoreUps[button] = false;
+       waitForUps[button] = false;
+       singleOKs[button] = true;
+       holdEventPasts[button] = false;
+       if ((millis()-upTimes[button]) < DCgap && DConUps[button] == false && DCwaitings[button] == true)  DConUps[button] = true;
+       else  DConUps[button] = false;
+       DCwaitings[button] = false;
+   }
+   // Button released
+   else if (buttonVals[button] == LOW && buttonLasts[button] == HIGH)
+   {        
+       if (not ignoreUps[button])
+       {
+           upTimes[button] = millis();
+           if (DConUps[button] == false) DCwaitings[button] = true;
+           else
+           {
+               event = 2;
+               DConUps[button] = false;
+               DCwaitings[button] = false;
+               singleOKs[button] = false;
+           }
+       }
+   }
+   // Test for normal click event: DCgap expired
+   if ( buttonVals[button] == LOW && (millis()-upTimes[button]) >= DCgap && DCwaitings[button] == true && DConUps[button] == false && singleOKs[button] == true && event != 2)
+   {
+       event = 1;
+       DCwaitings[button] = false;
+   }
+   // Test for hold
+   if (buttonVals[button] == HIGH && (millis() - downTimes[button]) >= holdTime) {
+       // Trigger long press
+       if (not holdEventPasts[button])
+       {
+           event = 3;
+           waitForUps[button] = true;
+           ignoreUps[button] = true;
+           DConUps[button] = false;
+           DCwaitings[button] = false;
+           //downTime = millis();
+           holdEventPasts[button] = true;
+       }
+   }
+   buttonLasts[button] = buttonVals[button];
+   return event*10 + button;
+}
+
 int readButtons(){
   while(1){
-    if(digitalRead(buttons[0]) == HIGH){
-      return 0;
-    } else if (digitalRead(buttons[1]) == HIGH){
-      return 1;
-    } else if (digitalRead(buttons[2]) == HIGH){
-      return 2;
-    } else if (digitalRead(buttons[3]) == HIGH){
-      return 3;
-    } else if (digitalRead(buttons[4]) == HIGH){
-      return 4;
-    } else if (digitalRead(buttons[5]) == HIGH){
-      return 5;
-    } else if (digitalRead(buttons[6]) == HIGH){
-      return 6;
-    } else if (digitalRead(buttons[7]) == HIGH){
-      return 7;
-    } else if (digitalRead(buttons[8]) == HIGH){
-      return 8;
+    for (int i = 0; i < 9; i++){
+      int a = checkButton(i);
+      if (a > 9)
+        return a;
     }
   }
   return -1;
 }
-
 void changePlayer(){
   if(turn){
-    digitalWrite(indicatorLed1, LOW);
-    digitalWrite(indicatorLed2, HIGH);
+    digitalWrite(indicatorLedBlue, LOW);
+    digitalWrite(indicatorLedRed, HIGH);
   } else{
-    digitalWrite(indicatorLed2, LOW);
-    digitalWrite(indicatorLed1, HIGH);
+    digitalWrite(indicatorLedRed, LOW);
+    digitalWrite(indicatorLedBlue, HIGH);
   }
   turn = !turn;
   row++;
@@ -94,9 +153,9 @@ int checkForWinner(){
 
 void winning(int winner){
   if(turn){
-    digitalWrite(indicatorLed1, LOW);
+    digitalWrite(indicatorLedBlue, LOW);
   } else{
-    digitalWrite(indicatorLed2, LOW);
+    digitalWrite(indicatorLedRed, LOW);
   }
   if(winner != 1){
     for(int i = 0; i < 9; i++){
@@ -132,9 +191,9 @@ void winning(int winner){
 
 void drow_blink(){
   if(turn){
-    digitalWrite(indicatorLed1, LOW);
+    digitalWrite(indicatorLedBlue, LOW);
   } else{
-    digitalWrite(indicatorLed2, LOW);
+    digitalWrite(indicatorLedRed, LOW);
   }
   for(int i = 0; i<9; i++){
   if(board[i] == 1){
@@ -161,9 +220,16 @@ void drow_blink(){
   }
 }
 
+void decodeButtonVlues(int value){
+  Serial.println(value/10);
+  if(value/10 == 1){
+    play(value%10);
+  }
+}
+
 void loop(){
-  Serial.println(readButtons());
-  play(readButtons());
+  decodeButtonVlues(readButtons());
+//  play(readButtons());
   int winner = checkForWinner();
   if(row == 10 && winner == 0){
     drow_blink();
@@ -171,4 +237,4 @@ void loop(){
   if(winner != 0){
     winning(winner);
   }
-};
+}
