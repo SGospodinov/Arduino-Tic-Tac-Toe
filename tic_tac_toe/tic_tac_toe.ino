@@ -1,3 +1,4 @@
+#define NONE 0
 #define SINGLE_MODE 1
 #define TWO_PLAYERS_MODE 2
 #define EMPTY 0
@@ -5,11 +6,14 @@
 #define O_ 2
 #define NO_WINNER 0
 #define BOARD_SIZE 9
+#define CLICK 1
+#define DOUBLE_CLICK 2
+#define HOLD 3
 
 int indicatorLedBlue = 22;
 int indicatorLedRed = 23;
 boolean turn = true;
-int gameMode = SINGLE_MODE;
+int gameMode = NONE;
 int row = 0;
 int board[] = {EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY};
 int oldBoard[] = {EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY};
@@ -49,7 +53,7 @@ boolean holdEventPasts[] = {false, false, false, false, false, false, false, fal
 
 
 int checkButton(int button) { 
-   int event = 0;
+   int event = NONE;
    buttonVals[button] = digitalRead(buttonPins[button]);
    // Button pressed down
    if (buttonVals[button] == HIGH && buttonLasts[button] == LOW)
@@ -72,7 +76,7 @@ int checkButton(int button) {
            if (DConUps[button] == false) DCwaitings[button] = true;
            else
            {
-               event = 2;
+               event = DOUBLE_CLICK;
                DConUps[button] = false;
                DCwaitings[button] = false;
                singleOKs[button] = false;
@@ -82,7 +86,7 @@ int checkButton(int button) {
    // Test for normal click event: DCgap expired
    if ( buttonVals[button] == LOW && (millis()-upTimes[button]) >= DCgap && DCwaitings[button] == true && DConUps[button] == false && singleOKs[button] == true && event != 2)
    {
-       event = 1;
+       event = CLICK;
        DCwaitings[button] = false;
    }
    // Test for hold
@@ -90,7 +94,7 @@ int checkButton(int button) {
        // Trigger long press
        if (not holdEventPasts[button])
        {
-           event = 3;
+           event = HOLD;
            waitForUps[button] = true;
            ignoreUps[button] = true;
            DConUps[button] = false;
@@ -270,11 +274,11 @@ void restartGame(){
 void decodeButtonVlues(int value){
   int event = value/10;
   int button = value%10;
-  if(event == 1){
+  if(event == CLICK){
     play(button);
-  }else if(event == 2 && gameMode == TWO_PLAYERS_MODE){
+  }else if(event == DOUBLE_CLICK && gameMode == TWO_PLAYERS_MODE){
     undo();
-  }else if(event == 3){
+  }else if(event == HOLD){
     restartGame();
   }
 }
@@ -300,6 +304,14 @@ int computeTurn(){
 }
 
 void loop(){
+  if(gameMode == NONE){
+    int event = readButtons()/10;
+    if(event == CLICK){
+      gameMode = SINGLE_MODE;
+    }else if(event == DOUBLE_CLICK){
+      gameMode = TWO_PLAYERS_MODE;
+    }
+  }
   if(gameMode == TWO_PLAYERS_MODE || (gameMode == SINGLE_MODE && turn)){
     decodeButtonVlues(readButtons());
   }else{
